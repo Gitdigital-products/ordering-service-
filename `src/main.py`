@@ -1,0 +1,40 @@
+---
+
+### 📄 `src/main.py`
+```python
+from fastapi import FastAPI
+from pydantic import BaseModel
+from typing import List
+
+app = FastAPI(
+    title="Recommendation Service API",
+    description="Generates product and content recommendations for users.",
+    version="1.0.0",
+)
+
+# --- Models ---
+class UserHistory(BaseModel):
+    user_id: str
+    items: List[str]  # items user has interacted with
+
+class Recommendation(BaseModel):
+    user_id: str
+    recommendations: List[str]
+
+# --- Fake dataset for demo ---
+catalog = ["book_1", "book_2", "game_1", "game_2", "movie_1", "movie_2"]
+user_histories = {}
+
+# --- Endpoints ---
+@app.post("/recommendations", response_model=Recommendation, summary="Generate recommendations for a user")
+def generate_recommendations(history: UserHistory):
+    user_histories[history.user_id] = history.items
+    # Very simple "recommendation": suggest items not seen yet
+    recs = [item for item in catalog if item not in history.items][:3]
+    return Recommendation(user_id=history.user_id, recommendations=recs)
+
+@app.get("/recommendations/{user_id}", response_model=Recommendation, summary="Get recommendations for a user")
+def get_recommendations(user_id: str):
+    history = user_histories.get(user_id, [])
+    recs = [item for item in catalog if item not in history][:3]
+    return Recommendation(user_id=user_id, recommendations=recs)
